@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+instance/
+uploads/
+data/
+document_stores/
+*.db
+*.sqlite
+*.sqlite3
+chroma_logs/
+chroma_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+logs/
