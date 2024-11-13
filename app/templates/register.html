@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Register - RagLangBot{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="card-title text-center mb-4">Create Account</h2>
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" required autofocus>
+                        <div class="form-text">We'll never share your email with anyone else.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required
+                               minlength="6" pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}"
+                               title="Must contain at least one number and one uppercase and lowercase letter, and at least 6 or more characters">
+                        <div class="form-text">Password must be at least 6 characters long.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Create Account</button>
+                    </div>
+                    <p class="text-center mt-3 mb-0">
+                        Already have an account?
+                        <a href="{{ url_for('auth.login') }}" class="text-decoration-none">Sign in</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirm_password');
+
+        if (password.value !== confirmPassword.value) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}
