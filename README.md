@@ -1,6 +1,8 @@
 <div align="center">
   <h1>RagLangBot</h1>
 
+  ![RagLangBot Homepage](assets/RagLangBot.png)
+
   <p align="center">
     A powerful conversational AI platform combining state-of-the-art language models with RAG capabilities
   </p>
