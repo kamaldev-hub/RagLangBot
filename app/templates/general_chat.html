@@ -1,0 +1,822 @@
+{% extends "base.html" %}
+
+{% block title %}General Chat - RagLangBot{% endblock %}
+
+{% block extra_head %}
+<style>
+    .chat-container {
+        height: calc(100vh - 8rem);
+        overflow: hidden;
+    }
+
+    .chat-sidebar {
+        width: 300px;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .conversations-list {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+        margin-right: -0.5rem;
+    }
+
+    .chat-messages {
+        height: calc(100vh - 16rem);
+        overflow-y: auto;
+        scroll-behavior: smooth;
+    }
+
+    /* Scrollbar styling */
+    .conversations-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .conversations-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .conversations-list::-webkit-scrollbar-thumb {
+        background-color: rgba(var(--bs-primary-rgb), 0.2);
+        border-radius: 3px;
+    }
+
+    .conversations-list::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.3);
+    }
+
+    .message {
+        max-width: 85%;
+        animation: messageSlide 0.3s ease-out;
+    }
+
+    .message-user {
+        background: var(--chat-bubble-user);
+    }
+
+    .message-bot {
+        background: var(--chat-bubble-bot);
+    }
+
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: currentColor;
+        display: inline-block;
+        border-radius: 50%;
+        opacity: 0.4;
+        animation: typing 1s infinite;
+        margin: 0 2px;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    .file-preview {
+        max-height: 100px;
+        transition: all 0.2s ease;
+    }
+
+    .file-preview:hover {
+        transform: scale(1.05);
+    }
+
+    @keyframes messageSlide {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes typing {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+
+    .code-block {
+        background: #1a1a1a;
+        border-radius: 0.5rem;
+        position: relative;
+    }
+
+    .code-block pre {
+        margin: 0;
+        padding: 1rem;
+    }
+
+    .code-block .copy-button {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .code-block:hover .copy-button {
+        opacity: 1;
+    }
+
+    .conversation-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
+        position: relative;
+    }
+
+    .conversation-item:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.1);
+    }
+
+    .conversation-item.active {
+        background-color: rgba(var(--bs-primary-rgb), 0.2);
+    }
+
+    .conversation-item .btn-outline-danger {
+        --bs-btn-padding-y: 0.25rem;
+        --bs-btn-padding-x: 0.5rem;
+        font-size: 0.875rem;
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .conversation-item:hover .btn-outline-danger {
+        opacity: 1;
+    }
+
+    .min-width-0 {
+        min-width: 0;
+    }
+
+    @media (max-width: 768px) {
+        .chat-sidebar {
+            position: fixed;
+            left: -300px;
+            z-index: 1000;
+            height: 100vh;
+        }
+
+        .chat-sidebar.show {
+            left: 0;
+        }
+    }
+
+    .model-selector {
+        padding: 10px;
+        background: var(--bs-body-bg);
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    .model-selector select {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid var(--bs-border-color);
+        background-color: var(--bs-body-bg);
+        color: var(--bs-body-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex chat-container">
+        <!-- Sidebar -->
+        <div class="chat-sidebar bg-body-tertiary border-end p-3">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0">Conversations</h5>
+                <button class="btn btn-gradient btn-sm" id="new-chat">
+                    <i class="bi bi-plus-lg"></i> New Chat
+                </button>
+            </div>
+
+            <div class="conversations-list">
+                {% for conversation in conversations %}
+                {% if conversation.last_message %}
+                <div class="card mb-2 conversation-item {% if conversation.id == current_conversation_id %}active{% endif %}"
+                     data-conversation-id="{{ conversation.id }}">
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div class="flex-grow-1 min-width-0">
+                                <h6 class="card-title mb-1 text-truncate">
+                                    {{ conversation.title or 'New Conversation' }}
+                                </h6>
+                                <p class="card-text small text-muted mb-0 text-truncate">
+                                    {{ conversation.last_message }}
+                                </p>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger delete-conversation"
+                                    data-conversation-id="{{ conversation.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="flex-grow-1 d-flex flex-column">
+            <!-- Chat Header -->
+            <div class="border-bottom p-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link d-md-none me-2" id="sidebar-toggle">
+                        <i class="bi bi-list fs-4"></i>
+                    </button>
+                    <div>
+                        <h5 class="mb-0">General Chat</h5>
+                        <small class="text-muted">Chat with various AI models</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Selector -->
+            <div class="model-selector">
+                <select id="modelSelect" class="form-select">
+                    <optgroup label="Google">
+                        <option value="gemma-7b-it">Gemma 7B IT</option>
+                        <option value="gemma2-9b-it">Gemma2 9B IT</option>
+                    </optgroup>
+                    <optgroup label="Meta">
+                        <option value="llama-3.2-90b-vision-preview">LLaMA 3.2 90B Vision</option>
+                        <option value="llama-3.2-90b-text-preview">LLaMA 3.2 90B Text</option>
+                        <option value="llama-3.2-11b-vision-preview">LLaMA 3.2 11B Vision</option>
+                        <option value="llama-3.2-11b-text-preview">LLaMA 3.2 11B Text</option>
+                        <option value="llama-3.1-70b-versatile">LLaMA 3.1 70B Versatile</option>
+                        <option value="llama-3.1-8b-instant">LLaMA 3.1 8B Instant</option>
+                    </optgroup>
+                    <optgroup label="Mistral">
+                        <option value="mixtral-8x7b-32768">Mixtral 8x7B 32K</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- Messages Area -->
+            <div class="chat-messages p-4" id="chat-messages">
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="d-flex mb-4 {% if message.sender == 'user' %}justify-content-end{% endif %}">
+                        <div class="message p-3 rounded-3 {% if message.sender == 'user' %}message-user{% else %}message-bot{% endif %}">
+                            {% if message.has_files %}
+                            <div class="mb-2 p-2 rounded bg-opacity-25 bg-primary">
+                                <i class="bi bi-paperclip me-2"></i>Files attached
+                            </div>
+                            {% endif %}
+
+                            <div class="message-content">
+                                {{ message.content|safe }}
+                            </div>
+
+                            <div class="mt-2 d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    {{ message.timestamp.strftime('%Y-%m-%d %I:%M %p') }}
+                                </small>
+                                {% if message.sender == 'ai' %}
+                                <button class="btn btn-link btn-sm p-0 copy-message"
+                                        data-bs-toggle="tooltip"
+                                        title="Copy message">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted my-5">
+                        <i class="bi bi-chat-dots display-1 mb-3"></i>
+                        <h4>Start a conversation</h4>
+                        <p>Ask anything or upload documents for analysis</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-top p-3">
+                <form id="chat-form" class="position-relative">
+                    <div class="card">
+                        <div class="card-body">
+                            <!-- File Preview Area -->
+                            <div id="file-preview" class="mb-3 d-none">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">Attached Files</small>
+                                    <button type="button" class="btn btn-link btn-sm p-0" id="clear-files">
+                                        Clear all
+                                    </button>
+                                </div>
+                                <div id="file-list" class="d-flex flex-wrap gap-2"></div>
+                            </div>
+
+                            <!-- Message Input -->
+                            <div class="input-group">
+                                <textarea class="form-control"
+                                          rows="1"
+                                          placeholder="Type your message..."
+                                          id="message-input"
+                                          required></textarea>
+
+                                <label class="input-group-text" for="file-upload">
+                                    <i class="bi bi-paperclip"></i>
+                                </label>
+                                <input type="file"
+                                       id="file-upload"
+                                       multiple
+                                       class="d-none"
+                                       accept=".txt,.pdf,.doc,.docx,.png,.jpg,.jpeg">
+
+                                <button class="btn btn-gradient" type="submit" id="send-button">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const fileUpload = document.getElementById('file-upload');
+    const filePreview = document.getElementById('file-preview');
+    const fileList = document.getElementById('file-list');
+    const clearFiles = document.getElementById('clear-files');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('.chat-sidebar');
+    const sendButton = document.getElementById('send-button');
+    const conversationsList = document.querySelector('.conversations-list');
+    const newChatButton = document.getElementById('new-chat');
+    const modelSelect = document.getElementById('modelSelect');
+
+    let currentConversationId = '{{ current_conversation_id }}' || null;
+    let currentModel = localStorage.getItem('selectedModel') || 'llama-3.2-90b-vision-preview';
+
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Set initial model
+    modelSelect.value = currentModel;
+
+    // Model selection
+    modelSelect.addEventListener('change', function() {
+        currentModel = this.value;
+        localStorage.setItem('selectedModel', currentModel);
+    });
+
+    // Auto-resize textarea and handle Enter key
+    messageInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        sendButton.disabled = !this.value.trim();
+    });
+
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (!sendButton.disabled) {
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        }
+    });
+
+    // Toggle sidebar on mobile
+    sidebarToggle?.addEventListener('click', () => {
+        sidebar.classList.toggle('show');
+    });
+
+    // Handle file selection
+    fileUpload.addEventListener('change', function() {
+        const files = Array.from(this.files);
+        if (files.length > 0) {
+            filePreview.classList.remove('d-none');
+            fileList.innerHTML = files.map(file => `
+                <div class="file-preview p-2 border rounded">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark me-2"></i>
+                        <small class="text-truncate">${file.name}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+    });
+
+    // Clear selected files
+    clearFiles.addEventListener('click', function() {
+        fileUpload.value = '';
+        filePreview.classList.add('d-none');
+        fileList.innerHTML = '';
+    });
+
+    // Handle conversation selection
+    conversationsList.addEventListener('click', function(e) {
+        const conversationItem = e.target.closest('.conversation-item');
+        if (conversationItem && !e.target.closest('.delete-conversation')) {
+            const conversationId = conversationItem.dataset.conversationId;
+            if (currentConversationId !== conversationId) {
+                loadConversation(conversationId);
+            }
+        }
+    });
+
+    // New chat button
+    newChatButton.addEventListener('click', function() {
+        currentConversationId = null;
+        updateActiveConversation(null);
+        chatMessages.innerHTML = `
+            <div class="text-center text-muted my-5">
+                <i class="bi bi-chat-dots display-1 mb-3"></i>
+                <h4>Start a new conversation</h4>
+                <p>Ask anything or upload documents for analysis</p>
+            </div>
+        `;
+        messageInput.focus();
+    });
+
+    // Load conversation
+    async function loadConversation(conversationId) {
+        try {
+            // Show loading state
+            chatMessages.innerHTML = `
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading conversation...</p>
+                </div>
+            `;
+
+            if (conversationId === 'new') {
+                // Clear messages for new conversation without creating one
+                chatMessages.innerHTML = `
+                    <div class="text-center text-muted my-5">
+                        <i class="bi bi-chat-dots display-1 mb-3"></i>
+                        <h4>Start a new conversation</h4>
+                        <p>Ask anything or upload documents for analysis</p>
+                    </div>
+                `;
+                currentConversationId = null;
+                updateActiveConversation(null);
+                return;
+            }
+
+            const response = await fetch(`/chat/conversation/${conversationId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            if (!data || !data.messages || !Array.isArray(data.messages)) {
+                throw new Error('Invalid response format');
+            }
+
+            // Check if the conversation is associated with an agent
+            if (data.agent_id) {
+                // Redirect to the agent-specific chat
+                window.location.href = `/chat/${data.agent_id}?conversation_id=${conversationId}`;
+                return;
+            }
+
+            currentConversationId = conversationId;
+
+            // Clear existing messages
+            chatMessages.innerHTML = '';
+
+            // Add messages
+            data.messages.forEach(message => {
+                const messageHtml = `
+                    <div class="d-flex mb-4 ${message.sender === 'user' ? 'justify-content-end' : ''}">
+                        <div class="message p-3 rounded-3 ${message.sender === 'user' ? 'message-user' : 'message-bot'}">
+                            ${message.has_files ? `
+                                <div class="mb-2 p-2 rounded bg-opacity-25 bg-primary">
+                                    <i class="bi bi-paperclip me-2"></i>Files attached
+                                </div>
+                            ` : ''}
+                            <div class="message-content">${message.content}</div>
+                            <div class="mt-2 d-flex justify-content-between align-items-center">
+                                <small class="text-muted">${new Date(message.timestamp).toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}</small>
+                                ${message.sender === 'ai' ? `
+                                    <button class="btn btn-link btn-sm p-0 copy-message"
+                                            data-bs-toggle="tooltip"
+                                            title="Copy message">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                chatMessages.insertAdjacentHTML('beforeend', messageHtml);
+            });
+
+            // Initialize tooltips for new messages
+            chatMessages.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                new bootstrap.Tooltip(el);
+            });
+
+            updateActiveConversation(conversationId);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            messageInput.focus();
+
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            chatMessages.innerHTML = `
+                <div class="alert alert-danger mx-3" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Failed to load conversation. Please try again.
+                    <button class="btn btn-outline-danger btn-sm ms-3" onclick="loadConversation('${conversationId}')">
+                        Retry
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // Update active conversation in sidebar
+    function updateActiveConversation(conversationId) {
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.conversationId === conversationId);
+        });
+    }
+
+    // Show error message
+    function showError(message) {
+        const errorHtml = `
+            <div class="alert alert-danger mx-3" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                ${message}
+            </div>
+        `;
+        chatMessages.insertAdjacentHTML('beforeend', errorHtml);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Handle form submission
+    chatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const messageText = messageInput.value.trim();
+        if (!messageText) return;
+
+        const formData = new FormData(this);
+        formData.append('message', messageText);
+        formData.append('model', currentModel);
+        if (currentConversationId) {
+            formData.append('conversation_id', currentConversationId);
+        }
+
+        // Disable input during submission
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+
+        // Add user message immediately
+        const userMessageHtml = `
+            <div class="d-flex mb-4 justify-content-end">
+                <div class="message message-user p-3 rounded-3">
+                    <div class="message-content">${messageText}</div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            ${new Date().toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+        chatMessages.insertAdjacentHTML('beforeend', userMessageHtml);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Add typing indicator
+        const typingHtml = `
+            <div class="d-flex mb-4 typing-indicator-container">
+                <div class="message message-bot p-3 rounded-3">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+        `;
+        chatMessages.insertAdjacentHTML('beforeend', typingHtml);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+            let response;
+            if (!currentConversationId && messageText) {
+                // Create new conversation only when there's an actual message
+                response = await fetch('{{ url_for("main.general_chat") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+            } else {
+                response = await fetch('{{ url_for("main.general_chat") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+            }
+
+
+            if (!response.ok) throw new Error('Failed to send message');
+            const data = await response.json();
+
+            // Remove typing indicator
+            document.querySelector('.typing-indicator-container').remove();
+
+            // Update current conversation ID only after successful response
+            if (data.conversation_id && !currentConversationId) {
+                currentConversationId = data.conversation_id;
+                // Only add to sidebar if we got a valid response
+                if (data.response) {
+                    addNewConversationToSidebar(data.conversation_id, messageText);
+                }
+            }
+
+            // Add bot response
+            const botMessageHtml = `
+                <div class="d-flex mb-4">
+                    <div class="message message-bot p-3 rounded-3">
+                        <div class="message-content">${data.response}</div>
+                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                ${new Date().toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
+                            </small>
+                            <button class="btn btn-link btn-sm p-0 copy-message"
+                                    data-bs-toggle="tooltip"
+                                    title="Copy message">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', botMessageHtml);
+
+            // Initialize tooltip for new message
+            const newTooltip = chatMessages.querySelector('.message:last-child [data-bs-toggle="tooltip"]');
+            new bootstrap.Tooltip(newTooltip);
+
+            // Update existing conversation preview
+            if (data.conversation_id && currentConversationId) {
+                updateConversationPreview(data.conversation_id, messageText);
+            }
+
+
+            // Clear form
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            fileUpload.value = '';
+            filePreview.classList.add('d-none');
+            fileList.innerHTML = '';
+
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to send message. Please try again.');
+
+            // Remove typing indicator on error
+            document.querySelector('.typing-indicator-container')?.remove();
+        } finally {
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            messageInput.focus();
+        }
+    });
+
+    // Add new conversation to sidebar
+    function addNewConversationToSidebar(conversationId, firstMessage) {
+        // Remove any existing conversation with the same ID
+        const existingConversation = document.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
+        if (existingConversation) {
+            existingConversation.remove();
+        }
+
+        const newConversationHtml = `
+            <div class="card mb-2 conversation-item active" data-conversation-id="${conversationId}">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="flex-grow-1 min-width-0">
+                            <h6 class="card-title mb-1 text-truncate">New Conversation</h6>
+                            <p class="card-text small text-muted mb-0 text-truncate">${firstMessage}</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger delete-conversation"
+                                data-conversation-id="${conversationId}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        conversationsList.insertAdjacentHTML('afterbegin', newConversationHtml);
+        updateActiveConversation(conversationId);
+
+        // Ensure the new conversation is visible
+        const newConversationElement = conversationsList.querySelector(`[data-conversation-id="${conversationId}"]`);
+        if (newConversationElement) {
+            newConversationElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    // Update conversation preview
+    function updateConversationPreview(conversationId, lastMessage) {
+        const conversation = document.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
+        if (conversation) {
+            const preview = conversation.querySelector('.card-text');
+            preview.textContent = lastMessage;
+        }
+    }
+
+    // Copy message functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.copy-message')) {
+            const messageContent = e.target.closest('.message')
+                                  .querySelector('.message-content').textContent;
+            navigator.clipboard.writeText(messageContent);
+
+            const tooltip = bootstrap.Tooltip.getInstance(e.target.closest('.copy-message'));
+            tooltip.setContent({ '.tooltip-inner': 'Copied!' });
+
+            setTimeout(() => {
+                tooltip.setContent({ '.tooltip-inner': 'Copy message' });
+            }, 2000);
+        }
+    });
+
+    // Delete conversation functionality
+    conversationsList.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-conversation')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const conversationId = e.target.closest('.delete-conversation').dataset.conversationId;
+            if (confirm('Are you sure you want to delete this conversation?')) {
+                deleteConversation(conversationId);
+            }
+        }
+    });
+
+    async function deleteConversation(conversationId) {
+        try {
+            const response = await fetch(`/delete_conversation/${conversationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete conversation');
+            }
+
+            const conversationElement = document.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
+            conversationElement.remove();
+
+            if (currentConversationId === conversationId) {
+                currentConversationId = null;
+                chatMessages.innerHTML = `
+                    <div class="text-center text-muted my-5">
+                        <i class="bi bi-chat-dots display-1 mb-3"></i>
+                        <h4>Start a new conversation</h4>
+                        <p>Ask anything or upload documents for analysis</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to delete conversation: ' + error.message);
+        }
+    }
+
+    // Initialize code highlighting
+    document.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightBlock(block);
+    });
+
+    // Initial scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Initial load - only load if there's an actual conversation ID
+    if (currentConversationId && currentConversationId !== 'new') {
+        loadConversation(currentConversationId);
+    } else {
+        loadConversation('new');
+    }
+});
+</script>
+{% endblock %}

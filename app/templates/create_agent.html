@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Create Agent - RagLangBot{% endblock %}
+
+{% block extra_head %}
+<style>
+    .drag-drop-zone {
+        border: 2px dashed var(--bs-border-color);
+        border-radius: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .drag-drop-zone.dragover {
+        border-color: var(--bs-primary);
+        background-color: rgba(var(--bs-primary-rgb), 0.1);
+    }
+
+    .file-preview {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .temperature-value {
+        min-width: 3rem;
+        text-align: center;
+    }
+
+    .form-range::-webkit-slider-thumb {
+        background: var(--bs-primary);
+    }
+
+    .form-range::-moz-range-thumb {
+        background: var(--bs-primary);
+    }
+
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(var(--bs-dark-rgb), 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="card-title text-center mb-4">Create New Agent</h2>
+
+                    <form method="POST" enctype="multipart/form-data" id="create-agent-form">
+                        <!-- Basic Information -->
+                        <div class="mb-4">
+                            <label for="name" class="form-label">Agent Name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="name"
+                                   name="name"
+                                   required
+                                   placeholder="Enter agent name">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control"
+                                      id="description"
+                                      name="description"
+                                      rows="3"
+                                      required
+                                      placeholder="Describe what this agent does"></textarea>
+                        </div>
+
+                        <!-- Model Configuration -->
+                        <div class="mb-4">
+                            <label for="model" class="form-label">Model</label>
+                            <select class="form-select" id="model" name="model" required>
+                                {% for model in available_models %}
+                                    <option value="{{ model.id }}">{{ model.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select the model that best suits your needs</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="temperature" class="form-label">Temperature</label>
+                            <div class="d-flex align-items-center gap-3">
+                                <input type="range"
+                                       class="form-range flex-grow-1"
+                                       id="temperature"
+                                       name="temperature"
+                                       min="0"
+                                       max="1"
+                                       step="0.1"
+                                       value="0.7">
+                                <span class="temperature-value" id="temperature-value">0.7</span>
+                            </div>
+                            <div class="form-text">
+                                Lower values make responses more focused, higher values make them more creative
+                            </div>
+                        </div>
+
+                        <!-- Document Upload -->
+                        <div class="mb-4">
+                            <label class="form-label">Upload Documents</label>
+                            <div class="drag-drop-zone p-4 text-center" id="drag-drop-zone">
+                                <i class="bi bi-cloud-upload display-4 mb-3"></i>
+                                <p class="mb-2">Drag and drop files here or</p>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="browse-files">
+                                    Browse Files
+                                </button>
+                                <input type="file"
+                                       id="documents"
+                                       name="documents"
+                                       multiple
+                                       accept=".pdf,.txt,.doc,.docx"
+                                       class="d-none"
+                                       required>
+                            </div>
+                            <div class="form-text">
+                                Supported formats: PDF, TXT, DOC, DOCX
+                            </div>
+                        </div>
+
+                        <!-- File Preview -->
+                        <div class="file-preview mb-4 d-none" id="file-preview">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">Selected Files</h6>
+                                <button type="button" class="btn btn-link btn-sm p-0" id="clear-files">
+                                    Clear all
+                                </button>
+                            </div>
+                            <div id="file-list" class="list-group"></div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-gradient">
+                                Create Agent
+                            </button>
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay d-none" id="loading-overlay">
+    <div class="text-center text-white">
+        <div class="spinner-border mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h5 class="mb-0">Creating Agent...</h5>
+        <p class="text-white-50">This may take a few moments</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('create-agent-form');
+    const dragDropZone = document.getElementById('drag-drop-zone');
+    const fileInput = document.getElementById('documents');
+    const browseFiles = document.getElementById('browse-files');
+    const filePreview = document.getElementById('file-preview');
+    const fileList = document.getElementById('file-list');
+    const clearFiles = document.getElementById('clear-files');
+    const temperatureInput = document.getElementById('temperature');
+    const temperatureValue = document.getElementById('temperature-value');
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    // Temperature slider
+    temperatureInput.addEventListener('input', function() {
+        temperatureValue.textContent = this.value;
+    });
+
+    // File input click handler
+    browseFiles.addEventListener('click', () => fileInput.click());
+
+    // Drag and drop handlers
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dragDropZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dragDropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dragDropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    dragDropZone.addEventListener('drop', handleDrop, false);
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function highlight(e) {
+        dragDropZone.classList.add('dragover');
+    }
+
+    function unhighlight(e) {
+        dragDropZone.classList.remove('dragover');
+    }
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInput.files = files;
+        updateFilePreview();
+    }
+
+    // File input change handler
+    fileInput.addEventListener('change', updateFilePreview);
+
+    function updateFilePreview() {
+        const files = Array.from(fileInput.files);
+
+        if (files.length > 0) {
+            filePreview.classList.remove('d-none');
+            fileList.innerHTML = files.map(file => `
+                <div class="list-group-item">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark me-2"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-medium">${file.name}</div>
+                            <small class="text-muted">${formatFileSize(file.size)}</small>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            filePreview.classList.add('d-none');
+            fileList.innerHTML = '';
+        }
+    }
+
+    // Clear files
+    clearFiles.addEventListener('click', function() {
+        fileInput.value = '';
+        filePreview.classList.add('d-none');
+        fileList.innerHTML = '';
+    });
+
+    // Form submission
+    form.addEventListener('submit', function() {
+        loadingOverlay.classList.remove('d-none');
+    });
+
+    // Utility function to format file size
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+});
+</script>
+{% endblock %}

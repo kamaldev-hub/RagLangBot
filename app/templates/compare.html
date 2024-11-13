@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Models - RagLangBot{% endblock %}
+
+{% block extra_head %}
+<style>
+    .chat-container {
+        height: calc(100vh - 8rem);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-messages {
+        height: calc(100vh - 20rem);
+        overflow-y: auto;
+        scroll-behavior: smooth;
+    }
+
+    .message {
+        max-width: 90%;
+        animation: messageSlide 0.3s ease-out;
+    }
+
+    .message-user {
+        background: var(--chat-bubble-user);
+    }
+
+    .message-bot {
+        background: var(--chat-bubble-bot);
+    }
+
+    .stats-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 250px;
+        background: rgba(0, 0, 0, 0.03);
+        border-left: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 1rem;
+        font-size: 0.85rem;
+        height: 100%;
+        overflow-y: auto;
+        transition: transform 0.3s ease;
+    }
+
+    .stats-panel.collapsed {
+        transform: translateX(250px);
+    }
+
+    .stats-toggle {
+        position: absolute;
+        left: -30px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-right: none;
+        padding: 0.5rem;
+        cursor: pointer;
+        border-radius: 4px 0 0 4px;
+    }
+
+    .chat-column {
+        position: relative;
+        padding-right: 250px;
+    }
+
+    @keyframes messageSlide {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: currentColor;
+        display: inline-block;
+        border-radius: 50%;
+        opacity: 0.4;
+        animation: typing 1s infinite;
+        margin: 0 2px;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+
+    .stats-value {
+        font-weight: 500;
+        color: var(--bs-primary);
+    }
+
+    .stats-section {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .stats-section:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mb-4">Compare Models</h1>
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <select id="leftSelect" class="form-select mb-2">
+                <optgroup label="Models">
+                    {% for model in available_models %}
+                    <option value="{{ model.id }}">{{ model.name }}</option>
+                    {% endfor %}
+                </optgroup>
+                <optgroup label="Agents">
+                    {% for agent in agents %}
+                    <option value="agent_{{ agent.id }}">{{ agent.name }}</option>
+                    {% endfor %}
+                </optgroup>
+            </select>
+            <div class="chat-column">
+                <div id="leftChat" class="chat-messages border rounded p-3"></div>
+                <div id="leftStats" class="stats-panel">
+                    <button class="stats-toggle" onclick="toggleStats('leftStats')">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <select id="rightSelect" class="form-select mb-2">
+                <optgroup label="Models">
+                    {% for model in available_models %}
+                    <option value="{{ model.id }}">{{ model.name }}</option>
+                    {% endfor %}
+                </optgroup>
+                <optgroup label="Agents">
+                    {% for agent in agents %}
+                    <option value="agent_{{ agent.id }}">{{ agent.name }}</option>
+                    {% endfor %}
+                </optgroup>
+            </select>
+            <div class="chat-column">
+                <div id="rightChat" class="chat-messages border rounded p-3"></div>
+                <div id="rightStats" class="stats-panel">
+                    <button class="stats-toggle" onclick="toggleStats('rightStats')">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-12">
+            <form id="compareForm">
+                <div class="input-group">
+                    <textarea id="promptInput" class="form-control" rows="2" placeholder="Enter your prompt here"></textarea>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const compareForm = document.getElementById('compareForm');
+    const promptInput = document.getElementById('promptInput');
+    const leftSelect = document.getElementById('leftSelect');
+    const rightSelect = document.getElementById('rightSelect');
+    const leftChat = document.getElementById('leftChat');
+    const rightChat = document.getElementById('rightChat');
+    const leftStats = document.getElementById('leftStats');
+    const rightStats = document.getElementById('rightStats');
+
+    compareForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const prompt = promptInput.value.trim();
+        if (!prompt) return;
+
+        const leftSelection = leftSelect.value;
+        const rightSelection = rightSelect.value;
+
+        addMessage(leftChat, prompt, 'user');
+        addMessage(rightChat, prompt, 'user');
+
+        addTypingIndicator(leftChat);
+        addTypingIndicator(rightChat);
+
+        try {
+            const response = await fetch('{{ url_for("main.compare_models") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    left_selection: leftSelection,
+                    right_selection: rightSelection,
+                    is_left_agent: leftSelection.startsWith('agent_'),
+                    is_right_agent: rightSelection.startsWith('agent_')
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to get comparison');
+            const data = await response.json();
+
+            removeTypingIndicator(leftChat);
+            removeTypingIndicator(rightChat);
+
+            addMessage(leftChat, data.left_response, 'bot');
+            addMessage(rightChat, data.right_response, 'bot');
+
+            updateStats(leftStats, data.left_stats, data.model_specs?.left);
+            updateStats(rightStats, data.right_stats, data.model_specs?.right);
+
+        } catch (error) {
+            console.error('Error:', error);
+            removeTypingIndicator(leftChat);
+            removeTypingIndicator(rightChat);
+            addMessage(leftChat, 'An error occurred. Please try again.', 'error');
+            addMessage(rightChat, 'An error occurred. Please try again.', 'error');
+        }
+
+        promptInput.value = '';
+    });
+
+    function addMessage(chatElement, content, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message p-2 rounded mb-2 ${sender === 'user' ? 'message-user text-end' : 'message-bot'}`;
+        messageDiv.textContent = content;
+        chatElement.appendChild(messageDiv);
+        chatElement.scrollTop = chatElement.scrollHeight;
+    }
+
+    function addTypingIndicator(chatElement) {
+        const indicatorDiv = document.createElement('div');
+        indicatorDiv.className = 'typing-indicator message message-bot p-2 rounded mb-2';
+        indicatorDiv.innerHTML = '<span></span><span></span><span></span>';
+        chatElement.appendChild(indicatorDiv);
+        chatElement.scrollTop = chatElement.scrollHeight;
+    }
+
+    function removeTypingIndicator(chatElement) {
+        const indicator = chatElement.querySelector('.typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    function updateStats(statsElement, stats, modelSpecs) {
+        if (!stats) {
+            statsElement.innerHTML = '<p>No statistics available</p>';
+            return;
+        }
+
+        const formatter = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 6,
+            maximumFractionDigits: 6
+        });
+
+        let statsHtml = `
+            <div class="stats-section">
+                <h6>Response Statistics</h6>
+                <div><small>Inference Time:</small> <span class="stats-value">${stats.inference_time?.toFixed(2) || 'N/A'}s</span></div>
+                <div><small>Input Tokens:</small> <span class="stats-value">${stats.input_tokens?.token_count || 'N/A'}</span></div>
+                <div><small>Output Tokens:</small> <span class="stats-value">${stats.output_tokens?.token_count || 'N/A'}</span></div>
+                <div><small>Tokens/Second:</small> <span class="stats-value">${stats.tokens_per_second?.toFixed(2) || 'N/A'}</span></div>
+                <div><small>Total Cost:</small> <span class="stats-value">${formatter.format(stats.cost?.total || 0)}</span></div>
+            </div>
+        `;
+
+        if (modelSpecs) {
+            statsHtml += `
+                <div class="stats-section">
+                    <h6>Model Specifications</h6>
+                    <div><small>Model Size:</small> <span class="stats-value">${modelSpecs.model_size || 'N/A'}</span></div>
+                    <div><small>Context Length:</small> <span class="stats-value">${modelSpecs.context_length || 'N/A'}</span></div>
+                    <div><small>Suggested Use:</small> <span class="stats-value">${modelSpecs.suggested_use || 'N/A'}</span></div>
+                </div>
+            `;
+        }
+
+        statsElement.innerHTML = statsHtml;
+    }
+});
+
+function toggleStats(statsId) {
+    const statsPanel = document.getElementById(statsId);
+    statsPanel.classList.toggle('collapsed');
+}
+</script>
+{% endblock %}

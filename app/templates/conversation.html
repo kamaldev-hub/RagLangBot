@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}View Conversation - RagLangBot{% endblock %}
+
+{% block extra_head %}
+<style>
+    .chat-messages {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    .conversation-type-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+    .agent-conversation {
+        background-color: #3498db;
+    }
+    .general-conversation {
+        background-color: #2ecc71;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">
+        <span class="conversation-type-indicator {% if conversation.agent_id %}agent-conversation{% else %}general-conversation{% endif %}" title="{% if conversation.agent_id %}Agent-specific{% else %}General{% endif %} conversation"></span>
+        Conversation: {{ conversation.title }}
+    </h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Conversation Details</h5>
+            <p class="card-text"><strong>ID:</strong> {{ conversation.id }}</p>
+            <p class="card-text"><strong>Created:</strong> {{ conversation.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+            <p class="card-text"><strong>Last Updated:</strong> {{ conversation.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+            {% if conversation.agent_id %}
+                <p class="card-text"><strong>Agent:</strong> {{ conversation.agent.name }}</p>
+            {% else %}
+                <p class="card-text"><strong>Type:</strong> General Chat</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-4">
+        {% if conversation.agent_id %}
+            <a href="{{ url_for('main.chat', agent_id=conversation.agent_id, conversation_id=conversation.id) }}" class="btn btn-primary">
+                Continue in Agent Chat
+            </a>
+        {% else %}
+            <a href="{{ url_for('main.general_chat', conversation_id=conversation.id) }}" class="btn btn-primary">
+                Continue in General Chat
+            </a>
+        {% endif %}
+        <a href="{{ url_for('main.home') }}" class="btn btn-secondary">Back to Home</a>
+    </div>
+
+    <h2 class="mb-3">Messages</h2>
+    <div class="chat-messages">
+        {% if not messages %}
+            <script>
+                // If there are no messages, redirect to the appropriate chat page
+                window.location.href = "{% if conversation.agent_id %}{{ url_for('main.chat', agent_id=conversation.agent_id) }}{% else %}{{ url_for('main.general_chat') }}{% endif %}";
+            </script>
+        {% else %}
+            {% for message in messages %}
+                <div class="card mb-3 {% if message.sender == 'user' %}border-primary{% else %}border-success{% endif %}">
+                    <div class="card-header">
+                        {{ message.sender|capitalize }} - {{ message.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ message.content|safe }}</p>
+                        {% if message.has_files %}
+                            <p class="card-text"><small class="text-muted">This message includes attached files.</small></p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Scroll to the bottom of the chat messages
+    var chatMessages = document.querySelector('.chat-messages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+});
+</script>
+{% endblock %}

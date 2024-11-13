@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}All Conversations - RagLangBot{% endblock %}
+
+{% block extra_head %}
+<style>
+    .conversation-card {
+        transition: all 0.2s ease;
+    }
+    .conversation-card:hover {
+        transform: translateY(-2px);
+    }
+    .conversation-type-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+    .agent-conversation {
+        background-color: #3498db;
+    }
+    .general-conversation {
+        background-color: #2ecc71;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">All Conversations</h1>
+
+    {% if conversations %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        {% for conversation in conversations %}
+        {% if conversation.last_message %}
+        <div class="col">
+            <a href="{% if conversation.agent_id %}{{ url_for('main.chat', agent_id=conversation.agent_id, conversation_id=conversation.id) }}{% else %}{{ url_for('main.general_chat', conversation_id=conversation.id) }}{% endif %}" class="text-decoration-none">
+                <div class="card conversation-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex gap-3">
+                            <span class="conversation-type-indicator {% if conversation.agent_id %}agent-conversation{% else %}general-conversation{% endif %}"
+                                  title="{% if conversation.agent_id %}Agent-specific{% else %}General{% endif %} conversation"></span>
+                            <div class="flex-grow-1">
+                                <h3 class="h6 mb-1">{{ conversation.title }}</h3>
+                                <p class="text-muted small mb-2">
+                                    {{ conversation.last_message[:100] + '...' if conversation.last_message else 'No messages yet' }}
+                                </p>
+                                <div class="d-flex align-items-center text-muted small">
+                                    <i class="bi bi-clock me-1"></i>
+                                    {{ conversation.updated_at.strftime('%B %d, %Y') }}
+                                    {% if conversation.is_pinned %}
+                                    <span class="ms-2">
+                                        <i class="bi bi-pin-angle-fill"></i>
+                                    </span>
+                                    {% endif %}
+                                    {% if conversation.agent_id %}
+                                    <span class="ms-2">
+                                        <i class="bi bi-person-workspace"></i>
+                                        {{ conversation.agent.name }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <div class="display-1 text-muted mb-4">
+            <i class="bi bi-chat-dots"></i>
+        </div>
+        <h3 class="h4 mb-3">No Conversations Yet</h3>
+        <p class="text-muted mb-4">Start chatting or create an agent to begin your first conversation!</p>
+        <div class="d-flex justify-content-center gap-3">
+            <a href="{{ url_for('main.general_chat') }}" class="btn btn-primary">Start Chatting</a>
+            <a href="{{ url_for('main.create_agent') }}" class="btn btn-gradient">Create Your First Agent</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
