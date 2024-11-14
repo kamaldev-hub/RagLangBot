@@ -7,11 +7,12 @@
     A powerful conversational AI platform combining state-of-the-art language models with RAG capabilities
   </p>
 
-
-
-  [![Python](https://img.shields.io/badge/python-v3.9+-blue.svg)](https://www.python.org/)
-  [![Flask](https://img.shields.io/badge/flask-v3.0.0-green.svg)](https://flask.palletsprojects.com/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-v3.9+-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/flask-v3.0.0-green.svg)](https://flask.palletsprojects.com/)
+[![HTML5](https://img.shields.io/badge/html5-%23E34F26.svg?style=flat&logo=html5&logoColor=white)](https://html.spec.whatwg.org/)
+[![CSS3](https://img.shields.io/badge/css3-%231572B6.svg?style=flat&logo=css3&logoColor=white)](https://www.w3.org/Style/CSS/)
+[![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=flat&logo=javascript&logoColor=%23F7DF1E)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 </div>
 
 ---
@@ -82,8 +83,7 @@ pip install -r requirements.txt
 4. **Environment setup**
 ```bash
 Create a .env file with:
-FLASK_APP=run.py
-FLASK_ENV=development
+
 DATABASE_URL=sqlite:///instance/database.db
 GROQ_API_KEY=your_groq_api_key
 FLASK_SECRET_KEY=your_secret_key
@@ -146,7 +146,6 @@ flask run
 ### File Security
 - Type validation
 - Secure storage
-- Automatic cleanup
 
 ### Data Protection
 - SQLAlchemy query protection
