@@ -156,13 +156,7 @@ flask run
 
 This project is licensed under the MIT License.
 
-## 🙏 Acknowledgments
-
-- [Groq](https://groq.com/) for LLM API
-- [ChromaDB](https://www.trychroma.com/) for vector storage
-- [Flask](https://flask.palletsprojects.com/) framework
-- [LangChain](https://www.langchain.com/) for LLM tools
-
+##
 
 
 <p align="center">
