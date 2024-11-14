@@ -61,7 +61,7 @@
 
 1. **Clone the Repository**
 ```bash
-git clone https://github.com/yourusername/raglangbot.git
+git clone https://github.com/kamaldev-hub/RagLangBot
 cd raglangbot
 ```
 
