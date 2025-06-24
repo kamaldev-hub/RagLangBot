@@ -23,10 +23,18 @@ bp = Blueprint('main', __name__)
 
 doc_processor = DocumentProcessor()
 
-GROQ_PRODUCTION_MODELS = [
+AVAILABLE_GROQ_MODELS = [
+    # Production
     {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B Versatile"},
     {"id": "gemma2-9b-it", "name": "Gemma2 9B IT"},
     {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant"},
+    # Preview
+    {"id": "deepseek-r1-distill-llama-70b", "name": "DeepSeek R1 Distill Llama 70B (Preview)"},
+    {"id": "meta-llama/llama-4-maverick-17b-128e-instruct", "name": "Llama 4 Maverick 17B (Preview)"},
+    {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout 17B (Preview)"},
+    {"id": "mistral-saba-24b", "name": "Mistral Saba 24B (Preview)"},
+    {"id": "qwen-qwq-32b", "name": "Qwen QWQ 32B (Preview)"},
+    {"id": "qwen/qwen3-32b", "name": "Qwen3 32B (Preview)"},
 ]
 
 ALLOWED_EXTENSIONS = {
@@ -161,7 +169,7 @@ def general_chat():
         current_conversation_id = request.args.get('conversation_id')
         messages = []
 
-        available_models = GROQ_PRODUCTION_MODELS
+        available_models = AVAILABLE_GROQ_MODELS
 
         if request.method == 'POST':
             user_message = request.form.get('message')
@@ -169,7 +177,7 @@ def general_chat():
                 return jsonify({'error': 'No message provided'}), 400
 
             conversation_id = request.form.get('conversation_id')
-            selected_model = request.form.get('model', "llama-3.2-90b-text-preview")
+            selected_model = request.form.get('model', "llama-3.3-70b-versatile") # Updated default
 
             if not conversation_id:
                 conversation = Conversation(
@@ -485,7 +493,7 @@ def delete_agent_conversation(agent_id, conversation_id):
 @bp.route('/create_agent', methods=['GET', 'POST'])
 @login_required
 def create_agent():
-    available_models = GROQ_PRODUCTION_MODELS
+    available_models = AVAILABLE_GROQ_MODELS
 
     if request.method == 'POST':
         try:
@@ -543,7 +551,7 @@ def edit_agent(agent_id):
         if agent.user_id != current_user.id:
             abort(403)
 
-        available_models = GROQ_PRODUCTION_MODELS
+        available_models = AVAILABLE_GROQ_MODELS
 
         if request.method == 'POST':
             agent.name = request.form['name']
