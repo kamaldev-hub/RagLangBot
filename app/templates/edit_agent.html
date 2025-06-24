@@ -58,14 +58,12 @@
                         <div class="mb-4">
                             <label for="model" class="form-label">Model</label>
                             <select class="form-select" id="model" name="model" required>
-                                <option value="llama-3.2-90b-vision-preview"
-                                        {% if config.model == "llama-3.2-90b-vision-preview" %}selected{% endif %}>
-                                    Llama 3.2 90B Vision
-                                </option>
-                                <option value="mixtral-8x7b-32768"
-                                        {% if config.model == "mixtral-8x7b-32768" %}selected{% endif %}>
-                                    Mixtral 8x7B
-                                </option>
+                                {% for model_option in available_models %}
+                                    <option value="{{ model_option.id }}"
+                                            {% if config.model == model_option.id %}selected{% endif %}>
+                                        {{ model_option.name }}
+                                    </option>
+                                {% endfor %}
                             </select>
                             <div class="form-text">Select the model that best suits your needs</div>
                         </div>

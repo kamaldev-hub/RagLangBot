@@ -160,7 +160,7 @@ def classify_prompt(prompt: str, agent_description: str, agent_domain: str) -> T
 
     try:
         llm = ChatGroq(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.3-70b-versatile",
             temperature=0.3,
             groq_api_key=Config.GROQ_API_KEY
         )

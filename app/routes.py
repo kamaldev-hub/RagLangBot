@@ -23,6 +23,12 @@ bp = Blueprint('main', __name__)
 
 doc_processor = DocumentProcessor()
 
+GROQ_PRODUCTION_MODELS = [
+    {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B Versatile"},
+    {"id": "gemma2-9b-it", "name": "Gemma2 9B IT"},
+    {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant"},
+]
+
 ALLOWED_EXTENSIONS = {
     'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'xlsx',
     'docx', 'pptx', 'csv', 'json', 'xml', 'py', 'js',
@@ -155,25 +161,7 @@ def general_chat():
         current_conversation_id = request.args.get('conversation_id')
         messages = []
 
-        available_models = [
-            {"id": "gemma-7b-it", "name": "Gemma 7B IT"},
-            {"id": "gemma2-9b-it", "name": "Gemma 2B IT"},
-            {"id": "llama3-groq-70b-8192-tool-use-preview", "name": "LLaMA 70B Tool"},
-            {"id": "llama3-groq-8b-8192-tool-use-preview", "name": "LLaMA 8B Tool"},
-            {"id": "llama-3.1-70b-versatile", "name": "LLaMA 3.1 70B Versatile"},
-            {"id": "llama-3.1-8b-instant", "name": "LLaMA 3.1 8B Instant"},
-            {"id": "llama-3.2-11b-text-preview", "name": "LLaMA 3.2 11B Text"},
-            {"id": "llama-3.2-11b-vision-preview", "name": "LLaMA 3.2 11B Vision"},
-            {"id": "llama-3.2-1b-preview", "name": "LLaMA 3.2 1B"},
-            {"id": "llama-3.2-3b-preview", "name": "LLaMA 3.2 3B"},
-            {"id": "llama-3.2-90b-text-preview", "name": "LLaMA 3.2 90B Text"},
-            {"id": "llama-3.2-90b-vision-preview", "name": "LLaMA 3.2 90B Vision"},
-            {"id": "llama-guard-3-8b", "name": "LLaMA Guard 3.8B"},
-            {"id": "llama3-70b-8192", "name": "LLaMA3 70B"},
-            {"id": "llama3-8b-8192", "name": "LLaMA3 8B"},
-            {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B"},
-            {"id": "llava-v1.5-7b-4096-preview", "name": "Llava 1.5 7B"}
-        ]
+        available_models = GROQ_PRODUCTION_MODELS
 
         if request.method == 'POST':
             user_message = request.form.get('message')
@@ -497,25 +485,7 @@ def delete_agent_conversation(agent_id, conversation_id):
 @bp.route('/create_agent', methods=['GET', 'POST'])
 @login_required
 def create_agent():
-    available_models = [
-        {"id": "gemma-7b-it", "name": "Gemma 7B IT"},
-        {"id": "gemma2-9b-it", "name": "Gemma 2B IT"},
-        {"id": "llama3-groq-70b-8192-tool-use-preview", "name": "LLaMA 70B Tool"},
-        {"id": "llama3-groq-8b-8192-tool-use-preview", "name": "LLaMA 8B Tool"},
-        {"id": "llama-3.1-70b-versatile", "name": "LLaMA 3.1 70B Versatile"},
-        {"id": "llama-3.1-8b-instant", "name": "LLaMA 3.1 8B Instant"},
-        {"id": "llama-3.2-11b-text-preview", "name": "LLaMA 3.2 11B Text"},
-        {"id": "llama-3.2-11b-vision-preview", "name": "LLaMA 3.2 11B Vision"},
-        {"id": "llama-3.2-1b-preview", "name": "LLaMA 3.2 1B"},
-        {"id": "llama-3.2-3b-preview", "name": "LLaMA 3.2 3B"},
-        {"id": "llama-3.2-90b-text-preview", "name": "LLaMA 3.2 90B Text"},
-        {"id": "llama-3.2-90b-vision-preview", "name": "LLaMA 3.2 90B Vision"},
-        {"id": "llama-guard-3-8b", "name": "LLaMA Guard 3.8B"},
-        {"id": "llama3-70b-8192", "name": "LLaMA3 70B"},
-        {"id": "llama3-8b-8192", "name": "LLaMA3 8B"},
-        {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B"},
-        {"id": "llava-v1.5-7b-4096-preview", "name": "Llava 1.5 7B"}
-    ]
+    available_models = GROQ_PRODUCTION_MODELS
 
     if request.method == 'POST':
         try:
@@ -573,17 +543,7 @@ def edit_agent(agent_id):
         if agent.user_id != current_user.id:
             abort(403)
 
-        available_models = [
-            {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B 32K"},
-            {"id": "llama-3.2-90b-vision-preview", "name": "LLaMA 3.2 90B Vision"},
-            {"id": "llama-3.2-90b-text-preview", "name": "LLaMA 3.2 90B Text"},
-            {"id": "llama-3.2-11b-vision-preview", "name": "LLaMA 3.2 11B Vision"},
-            {"id": "llama-3.2-11b-text-preview", "name": "LLaMA 3.2 11B Text"},
-            {"id": "llama-3.1-70b-versatile", "name": "LLaMA 3.1 70B Versatile"},
-            {"id": "llama-3.1-8b-instant", "name": "LLaMA 3.1 8B Instant"},
-            {"id": "gemma-7b-it", "name": "Gemma 7B IT"},
-            {"id": "gemma2-9b-it", "name": "Gemma 2B IT"}
-        ]
+        available_models = GROQ_PRODUCTION_MODELS
 
         if request.method == 'POST':
             agent.name = request.form['name']

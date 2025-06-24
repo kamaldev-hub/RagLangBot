@@ -32,7 +32,7 @@ def extract_domain_keywords(description: str) -> List[str]:
 
     try:
         llm = ChatGroq(
-            model="llama-3.2-90b-vision-preview",
+            model="llama-3.3-70b-versatile",
             temperature=0.3,
             groq_api_key=Config.GROQ_API_KEY
         )
@@ -90,7 +90,7 @@ def create_agent_with_documents(name: str, description: str, configurations: Dic
 
         # Create enhanced configurations with base settings
         enhanced_configurations = {
-            'model': configurations.get('model', "llama-3.2-90b-vision-preview"),
+            'model': configurations.get('model', "llama-3.3-70b-versatile"),
             'temperature': configurations.get('temperature', 0.7),
             'domain_keywords': domain_keywords,
             'strict_domain': True,
@@ -159,7 +159,7 @@ def generate_enhanced_description(description: str, domain_keywords: List[str]) 
 
     try:
         llm = ChatGroq(
-            model="llama-3.2-90b-vision-preview",
+            model="llama-3.3-70b-versatile",
             temperature=0.4,
             groq_api_key=Config.GROQ_API_KEY
         )
@@ -215,7 +215,7 @@ def process_agent_query(agent: Agent, query: str, conversation_history: List = N
     """Process a query using the agent's configured model and settings"""
     try:
         config = json.loads(agent.configurations)
-        model = config.get('model', "llama-3.2-90b-vision-preview")
+        model = config.get('model', "llama-3.3-70b-versatile")
         temperature = float(config.get('temperature', 0.7))
 
         logger.info(f"Processing query with model {model} and temperature {temperature}")
